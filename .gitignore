@@ -1,0 +1,5 @@
+.ipynb_checkpoints/
+_log*/
+_out*/
+_tmp/
+wav_folder*

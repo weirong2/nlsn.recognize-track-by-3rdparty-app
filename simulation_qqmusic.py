@@ -207,10 +207,6 @@ def _am_pressBack():
     cmd = "adb shell input tap 40 90"           #this is back arrow position
     out = subprocess.check_output(cmd.split())
 
-def _am_pressRetry():
-    cmd = "adb shell input tap 600 1530"        #this is re-try buttom
-    out = subprocess.check_output(cmd.split())
-    
 def _am_onScreenAction(fn,out,ss,pos,rc):
     tsvFile = open(os.path.join(out,fn)+'.tsv','a')
     
@@ -237,37 +233,32 @@ def _am_onScreenAction(fn,out,ss,pos,rc):
         _im_add_suffix(name,'matchup')
         _am_pressBack()
         _am_pressRecognition()
-    elif '未匹配到结果' in _ocr_to_string(name+"_check02"):
-        print("SCREEN_NO_MATCH",end='')
-        tsvFile.write("%s\t\t\t"%pos)
-        ret, err =  True, 'SCREEN_NO_MATCH'
-        _im_add_suffix(name,'nomatch')
-        _am_pressBack()
-        _am_pressRecognition
-    elif '请求超时' in _ocr_to_string(name+"_check02"):
-        print("SCREEN_REQ_TIMEOUT",end='')
-        tsvFile.write("%s\t\t\t"%pos)
-        ret, err =  True, 'SCREEN_REQ_TIMEOUT'
-        _im_add_suffix(name,'timeout')
-        _am_pressRetry()
-        _am_pressRecognition()
-    elif '发生错误了' in _ocr_to_string(name+"_check02"):
-        print("SCREEN_ERROR_OCCUR",end='')
-        tsvFile.write("%s\t\t\t"%pos)
-        ret, err =  True, 'SCREEN_ERROR_OCCUR'
-        _im_add_suffix(name,'errOccur')
-        _am_pressRetry()
-        _am_pressRecognition()
     elif '停止识别' in _ocr_to_string(name+"_check03"):
         print("SCREEN_MATCHING",end='')
         tsvFile.write("%s\t\t\t"%pos)
         ret, err =  True, 'SCREEN_MATCHING'
         _im_add_suffix(name,'matching')
     else:
-        print("SCREEN_UNKNOWN",end='')
+        check02str = _ocr_to_string(name+"_check02")
+        if '未匹配到结果' in check02str:
+            print("SCREEN_NO_MATCH",end='')
+            _im_add_suffix(name,'nomatch')
+            ret, err =  True, 'SCREEN_NO_MATCH'
+        elif '请求超时' in check02str:
+            print("SCREEN_REQ_TIMEOUT",end='')
+            _im_add_suffix(name,'timeout')
+            ret, err =  True, 'SCREEN_REQ_TIMEOUT'
+        elif '发生错误了' in check02str:
+            print("SCREEN_ERROR_OCCUR",end='')
+            _im_add_suffix(name,'errOccur')
+            ret, err =  True, 'SCREEN_ERROR_OCCUR'
+        else:
+            print("SCREEN_UNKNOWN",end='')
+            _im_add_suffix(name,'unkown')
+            ret, err = True, 'SCREEN_UNKNOWN'
         tsvFile.write("%s\t\t\t"%pos)
-        ret, err = True, 'SCREEN_UNKNOWN'
-        _im_add_suffix(name,'unkown')
+        _am_pressBack()
+        _am_pressRecognition
     
     _im_cleanup(name)
     print('\n',end='')

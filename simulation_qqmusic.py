@@ -275,8 +275,7 @@ def _am_onScreenAction(fn,out,ss,pos,rc):
     tsvFile.close()
     return ret, err
 
-def androidManipulation(t,inF,outD,screenSize):
-    interval = 30 #per Dong-In's request to have conversion from actaul pos to closer interval value
+def androidManipulation(t,inF,outD,screenSize,interval):
     roundCount = 0 #in case the match up screen is presenting previous recognized track
 
     startTime = time.time()
@@ -290,11 +289,11 @@ def androidManipulation(t,inF,outD,screenSize):
                 break
 
 ########wav play & android manipulation threads########
-def simuThreads(inF,outD,screenSize):
+def simuThreads(inF,outD,screenSize,interval):
     threadWp = Thread(target=wavPlaying, args=(inF,))
     threadWp.start()
 
-    threadAm = Thread(target=androidManipulation, args=(threadWp,os.path.basename(inF),outD,screenSize,))
+    threadAm = Thread(target=androidManipulation, args=(threadWp,os.path.basename(inF),outD,screenSize,interval,))
     threadAm.start()
 
     threadWp.join()
@@ -306,15 +305,16 @@ def simuThreads(inF,outD,screenSize):
 
 def usage():
     print("Usage:")
-    print("python simulation_qqmusic.py --wav_dir=$wavDir --out_dir=$outDir")
+    print("python simulation_qqmusic.py --wav_dir=$wavDir --out_dir=$outDir --interval=$interval")
     print("  $wav_dir: the input directory for wave files")
     print("  $out_dir: the output directory for result tsv file and corresponding images")
+    print("  $interval: optional, the interval (in second) to check screen content, default is 60 seconds")
     exit()
 
 def main(argv):
-    opts, args = getopt.getopt(argv[1:], "h", ['wav_dir=', 'out_dir='])
+    opts, args = getopt.getopt(argv[1:], "h", ['wav_dir=', 'out_dir=', 'interval='])
 
-    wavDir,outDir = '',''
+    wavDir,outDir,interval = '','',60
 
     for o, a in opts:
         if o in ('-h'):
@@ -323,13 +323,22 @@ def main(argv):
             wavDir = a
         elif o in ('--out_dir'):
             outDir = a
+        elif o in ('--interval'):
+            interval = a
 
     if wavDir == '' or outDir == '':
         print("missing parameter, please check usage.")
         usage()
 
-    print("wav files directory is: %s"%wavDir)
-    print("output directory is   : %s"%outDir)
+    try:
+        int(interval)
+    except ValueError:
+        print("invalid interval, please check usage.")
+        usage()
+
+    print("wav files directory is : %s"%wavDir)
+    print("   output directory is : %s"%outDir)
+    print("           interval is : %s seconds"%interval)
     
     if not os.path.isdir(wavDir):
         print("wav directory %s does NOT exist, exit...")
@@ -359,13 +368,14 @@ def main(argv):
     for i in sorted(wavList):
         totalCount = totalCount + 1
         print("[%03d: %s]"%(totalCount,i))
-        simuThreads(os.path.join(wavDir,i),outDir,screenSize)
+        simuThreads(os.path.join(wavDir,i),outDir,screenSize,int(interval))
 
 
 # In[4]:
 
 
-#sys.argv = ['simulation_qqmusic.py', '--wav_dir', 'wav_folder_test', '--out_dir', '_out_test_saturday']
+#sys.argv = ['simulation_qqmusic.py', '--wav_dir', 'wav_folder_test', '--out_dir', '_out_test', '--interval', '45']
+#sys.argv = ['simulation_qqmusic.py', '--wav_dir', '_archive\wav_folder_test', '--out_dir', '_out_test']
 
 ##########Main()##########
 if __name__ == '__main__':

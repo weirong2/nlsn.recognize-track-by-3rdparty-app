@@ -116,6 +116,9 @@ def _im_cleanup_extracted_string(s):
     if s[:4] == '_ 一 ' and s[-4:] == ' 一 _': s = s[4:-4]
     if s[:2] == '一 ' and s[-2:] == ' 一': s = s[2:-2]
     if s[:2] == '— ' and s[-2:] == ' —': s = s[2:-2]
+    if s[:2] == '一 ' and s[-2:] == ' —': s = s[2:-2]
+    if s[:2] == '— ' and s[-2:] == ' 一': s = s[2:-2]
+    if s[:2] == '一 ' and s[-1:] == '_': s = s[2:-1]
     if s[:1] == '_' and s[-1:] == '_': s = s[1:-1]
     return s.strip()
     
@@ -203,6 +206,10 @@ def _am_pressRecognition():
     cmd = "adb shell input tap 300 1715"        #this is recognition icon position
     out = subprocess.check_output(cmd.split())
 
+def _am_pressRetry():
+    cmd = "adb shell input tap 600 1530"        #this is re-try buttom
+    out = subprocess.check_output(cmd.split())
+
 def _am_pressBack():
     cmd = "adb shell input tap 40 90"           #this is back arrow position
     out = subprocess.check_output(cmd.split())
@@ -225,39 +232,47 @@ def _am_onScreenAction(fn,out,ss,pos,rc):
     _im_crop_save(name, name+"_check02", (0, 610, 1200, 675))   #请求超时/未匹配到结果/无网络连接
     _im_crop_save(name, name+"_check03", (0, 1505, 1200, 1555)) #重试/停止识别/开始识别/重新识别/查看识别历史
 
-    #rc：round count, if first round screen is match_up, skip it as it may be presenting the previous track meta
-    if '匹配到以下结果' in _ocr_to_string(name+"_check01") and rc != 0: 
-        ret, err, track1, track2, artist = _im_extract_track_artist(name)
-        print("%s\t%s\t%s\t%s"%(err,track1,track2,artist),end='')
-        tsvFile.write("%s\t%s\t%s\t%s"%(pos,track1,track2,artist))
-        _im_add_suffix(name,'matchup')
+    if '匹配到以下结果' in _ocr_to_string(name+"_check01"):
+        if rc == 0: #if first round screen is match_up, skip it as it may be presenting the previous track meta
+            print("SCREEN_SKIP_FIRST_MATCHUP",end='')
+            _im_add_suffix(name,'skip')
+            ret, err =  True, 'SCREEN_SKIP_FIRST_MATCHUP'
+            tsvFile.write("%s\t\t\t"%pos)
+        else:
+            ret, err, track1, track2, artist = _im_extract_track_artist(name)
+            print("%s\t%s\t%s\t%s"%(err,track1,track2,artist),end='')
+            tsvFile.write("%s\t%s\t%s\t%s"%(pos,track1,track2,artist))
+            _im_add_suffix(name,'matchup')
         _am_pressBack()
         _am_pressRecognition()
     elif '停止识别' in _ocr_to_string(name+"_check03"):
         print("SCREEN_MATCHING",end='')
-        tsvFile.write("%s\t\t\t"%pos)
-        ret, err =  True, 'SCREEN_MATCHING'
         _im_add_suffix(name,'matching')
+        ret, err =  True, 'SCREEN_MATCHING'
+        tsvFile.write("%s\t\t\t"%pos)
     else:
         check02str = _ocr_to_string(name+"_check02")
         if '未匹配到结果' in check02str:
             print("SCREEN_NO_MATCH",end='')
             _im_add_suffix(name,'nomatch')
             ret, err =  True, 'SCREEN_NO_MATCH'
+            _am_pressBack()
         elif '请求超时' in check02str:
             print("SCREEN_REQ_TIMEOUT",end='')
             _im_add_suffix(name,'timeout')
             ret, err =  True, 'SCREEN_REQ_TIMEOUT'
+            _am_pressRetry()
         elif '发生错误了' in check02str:
             print("SCREEN_ERROR_OCCUR",end='')
             _im_add_suffix(name,'errOccur')
             ret, err =  True, 'SCREEN_ERROR_OCCUR'
+            _am_pressBack()
         else:
             print("SCREEN_UNKNOWN",end='')
             _im_add_suffix(name,'unkown')
             ret, err = True, 'SCREEN_UNKNOWN'
+            _am_pressBack()
         tsvFile.write("%s\t\t\t"%pos)
-        _am_pressBack()
         _am_pressRecognition
     
     _im_cleanup(name)
@@ -358,7 +373,7 @@ def main(argv):
     totalCount = 0
     for i in sorted(wavList):
         totalCount = totalCount + 1
-        print("[%03d: %s]"%(totalCount,i))
+        print("[%03d:\t%s]"%(totalCount,i))
         simuThreads(os.path.join(wavDir,i),outDir,screenSize,int(interval))
 
 
@@ -366,7 +381,7 @@ def main(argv):
 
 
 #sys.argv = ['simulation_qqmusic.py', '--wav_dir', 'wav_folder_test', '--out_dir', '_out_test', '--interval', '45']
-#sys.argv = ['simulation_qqmusic.py', '--wav_dir', '_archive\wav_folder_test', '--out_dir', '_out_test']
+#sys.argv = ['simulation_qqmusic.py', '--wav_dir', '_archive\wav_folder_test', '--out_dir', '_out_xxx']
 
 ##########Main()##########
 if __name__ == '__main__':
